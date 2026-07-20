@@ -6,7 +6,8 @@ struct Uniforms {
     time : f32,
     pos : vec2f,
     size : vec2f,
-    max_iter : u32
+    max_iter : u32,
+    color_mode : u32
 };
 
 @group(0) @binding(0) var<uniform> u : Uniforms;
@@ -50,7 +51,20 @@ fn fs(in : VSOut) -> @location(0) vec4f {
 
         i = i + 1;
     }
+    
+    if (u.color_mode == 0) {
+        return blue_white(i, MAX);
+    }
+    
+    if (u.color_mode == 1) {
+        return good_blue(x, y, i, MAX);
+    }
+    
+    return color_green_dark(i, MAX);
+}
 
+
+fn blue_white(i : u32, MAX : u32) -> vec4f {
     if (i == MAX) {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
@@ -59,11 +73,45 @@ fn fs(in : VSOut) -> @location(0) vec4f {
 
     return vec4f(2.0*l - 1.0, 2.0*l - 1.0, 1.0, 1.0);
 }
+
+fn color_green_dark(n : u32, max_iter : u32) -> vec4f {
+    if (n < max_iter) {
+        let quotient : f32 =  f32(n) / f32(max_iter);
+        let color = clamp(0.0, 1.0, quotient);
+        if (quotient > 0.5) {
+            // Close to the mandelbrot set the color changes from green to white
+            return vec4f(color, 1.0, color, 1.0);
+        }
+        else {
+            // Far away it changes from black to green
+            return vec4f(0.0, color, 0.0, 1.0);
+        }
+    }
+    
+    return vec4f(0.0,0.0,0.0,1.0);
+}
+
+fn good_blue(re : f32, im : f32, i : u32, MAX : u32) -> vec4f {
+    
+    if (i < MAX) {
+        let zn = sqrt(re * re + im * im);
+        let smooth_ = f32(i) + 1.0 - log(max(log(zn), 1e-10)) / log(2.0);
+        let t_ = clamp(0.0, 1.0, smooth_ / f32(MAX));
+        let t = pow(t_, 0.5);
+        let r = t * t;
+        let g = t * 220.0 / 255.0;
+        let b = 60.0 / 255.0 + t * 195.0 / 255.0;
+        return vec4f(r, g, b, 1.0);
+    }
+    
+    return vec4f(0.0,0.0,0.0,1.0);
+}
+
 `;
 
 async function setup(canvas: HTMLCanvasElement, errBox: HTMLDivElement, viewRef: { current: View }, iterRef: {
     current: Props["iteration"]
-}) {
+}, time_per_iteration: number, colorRef : {current : Props["color_mode"]}) {
     function fail(msg: string) {
         errBox.style.display = 'grid'
         errBox.textContent = msg;
@@ -98,7 +146,7 @@ async function setup(canvas: HTMLCanvasElement, errBox: HTMLDivElement, viewRef:
     // time (f32) | - |
     // pos (vec2f)
     // size (vec2f)
-    // max_iter (u32) | - |
+    // max_iter (u32) | color_mode (u32) |
     const size = 4; // number of 8 bytes of the uniform data
     const uniformBuffer = device.createBuffer({
         size: size * 8,
@@ -128,22 +176,37 @@ async function setup(canvas: HTMLCanvasElement, errBox: HTMLDivElement, viewRef:
         if (!running) return;
 
         const view = viewRef.current;
+        const time = (performance.now() - start) / 1000
         let max_iter;
         if (iterRef.current == 'auto') {
-            // TODO
-            max_iter = Math.floor((performance.now() - start) / 1000)
-            console.log(max_iter)
+            max_iter = 100
+            if (view.width < 1.0e-5) max_iter *= 2;
+            if (view.width < 1.0e-11) max_iter *= 2;
+            if (view.width < 1.0e-17) max_iter *= 2;
+
+        } else if (iterRef.current == 'time_incremental') {
+            max_iter = Math.floor(time / time_per_iteration)
         } else {
             max_iter = iterRef.current ?? 100;
         }
 
-        dv.setFloat32(0, (performance.now() - start) / 1000, true);
+
+        const mode = colorRef.current;
+        let color_mode;
+        switch (mode) {
+            case "blue": color_mode = 0; break;
+            case "better_blue": color_mode = 1; break;
+            case "green": color_mode = 2; break;
+            default: color_mode = 1; break;
+        }
+
+        dv.setFloat32(0, time, true);
         dv.setFloat32(8, view.pos_x, true);
         dv.setFloat32(12, view.pos_y, true);
         dv.setFloat32(16, view.width, true);
         dv.setFloat32(20, view.height, true);
         dv.setUint32(24, max_iter, true);
-
+        dv.setUint32(28, color_mode, true);
 
         device.queue.writeBuffer(uniformBuffer, 0, buf);
 
@@ -192,20 +255,27 @@ const DEFAULT_VIEW = {
 interface Props {
     width?: number | string,
     height?: number | string,
-    iteration?: number | 'auto',
+    iteration?: number | 'auto' | 'time_incremental',
     default_view?: View,
-    scale_factor?: number
+    scale_factor?: number,
+    time_per_iteration?: number,
+    color_mode? : 'blue' | 'better_blue' | 'green',
 }
 
+// Renders an interactive Mandelbrot fractal on a WebGPU canvas with scroll-to-zoom.
 export default function FractalViewer(
     {
         width = 400,
         height = 400,
         iteration = 'auto',
         default_view = DEFAULT_VIEW,
-        scale_factor = 0.8
+        scale_factor = 0.8,
+        time_per_iteration = 0.2,
+        color_mode = 'better_blue'
 
     }: Props) {
+
+    console.assert(0 < scale_factor && scale_factor <= 1)
 
     let canvas = useRef<HTMLCanvasElement>(null)
     let errBox = useRef<HTMLDivElement>(null)
@@ -215,6 +285,8 @@ export default function FractalViewer(
     viewRef.current = view;
     let iterationRef = useRef(iteration)
     iterationRef.current = iteration
+    let colorRef = useRef(color_mode);
+    colorRef.current = color_mode
 
     useEffect(() => {
 
@@ -225,10 +297,8 @@ export default function FractalViewer(
         let dispose: (() => void) | null = null;
         let cancelled = false;
 
-        setup(canvas.current, errBox.current, viewRef, iterationRef)
+        setup(canvas.current, errBox.current, viewRef, iterationRef, time_per_iteration, colorRef)
             .then(cleanup => {
-                // Si l'effet a déjà été nettoyé pendant que setup tournait,
-                // on libère immédiatement les ressources.
                 if (cancelled) cleanup();
                 else dispose = cleanup;
             })
@@ -249,11 +319,11 @@ export default function FractalViewer(
         let relative_x = e.clientX - rect.left
         let relative_y = rect.height - e.clientY - rect.top // inverted
 
-        // Cursor's position in view
+        // Cursor's position in view (fractal coordinates)
         let view_x = relative_x * view.width / rect.width + view.pos_x
         let view_y = relative_y * view.height / rect.height + view.pos_y
 
-        // Starting corner of view with cursor position fixed
+        // New bottom-left corner, scaled so the cursor point stays put
         let xs = view_x * (1 - scale) + scale * view.pos_x
         let ys = view_y * (1 - scale) + scale * view.pos_y
 
@@ -284,3 +354,7 @@ export default function FractalViewer(
         </div>
     );
 }
+
+
+
+

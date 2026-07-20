@@ -1,9 +1,15 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
+import {StrictMode} from 'react'
+import {createRoot} from 'react-dom/client'
 import FractalViewer from "./FractalViewer.tsx";
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <FractalViewer />
-  </StrictMode>,
+    <StrictMode>
+        <FractalViewer
+            width={400}
+            height={400}
+            iteration={'time_incremental'}
+            time_per_iteration={0.01}
+            color_mode={"green"}
+        />
+    </StrictMode>,
 )

@@ -7,8 +7,8 @@ createRoot(document.getElementById('root')!).render(
         <FractalViewer
             width={400}
             height={400}
-            iteration={'time_incremental'}
-            time_per_iteration={0.01}
+            iteration={40}
+            time_per_iteration={0.1}
             color_mode={"green"}
         />
     </StrictMode>,

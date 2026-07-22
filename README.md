@@ -2,8 +2,11 @@
 
 An interactive Mandelbrot set explorer rendered in real time on the GPU with **WebGPU**. Scroll to zoom in and out, anchored to your cursor.
 
-<!-- TODO: add a demo GIF, e.g. ![demo](docs/demo.gif) -->
 <!-- TODO: add a live demo link once deployed, e.g. **[Live demo](https://your-site.example.com)** -->
+
+
+![Fractal Viewer screenshot](docs/media/screenshot.png)
+
 
 ## Features
 
@@ -54,15 +57,15 @@ The viewer is a standalone component you can configure through props:
 />
 ```
 
-| Prop                 | Type                                            | Default                               | Description                                                              |
-|----------------------|--------------------------------------------------|----------------------------------------|----------------------------------------------------------------------------|
-| `width`              | `number \| string`                              | `400`                                  | Canvas width                                                              |
-| `height`             | `number \| string`                              | `400`                                  | Canvas height                                                             |
-| `iteration`          | `number \| 'auto' \| 'time_incremental'`        | `'auto'`                               | Max iteration strategy (fixed, distance-based, or time-based ramp-up)     |
-| `default_view`       | `{ pos_x, pos_y, width, height }`                | centered on the Mandelbrot set         | Initial viewport in fractal coordinates                                  |
-| `scale_factor`       | `number` (between 0 and 1)                      | `0.8`                                   | Zoom factor applied per scroll step                                      |
-| `time_per_iteration` | `number`                                         | `0.2`                                   | Seconds per extra iteration when `iteration` is `'time_incremental'`      |
-| `color_mode`         | `'blue' \| 'better_blue' \| 'green'`            | `'better_blue'`                        | Color palette used to render the set                                     |
+| Prop                 | Type                                     | Default                        | Description                                                           |
+|----------------------|------------------------------------------|--------------------------------|-----------------------------------------------------------------------|
+| `width`              | `number \| string`                       | `400`                          | Canvas width                                                          |
+| `height`             | `number \| string`                       | `400`                          | Canvas height                                                         |
+| `iteration`          | `number \| 'auto' \| 'time_incremental'` | `'auto'`                       | Max iteration strategy (fixed, distance-based, or time-based ramp-up) |
+| `default_view`       | `{ pos_x, pos_y, width, height }`        | centered on the Mandelbrot set | Initial viewport in fractal coordinates                               |
+| `scale_factor`       | `number` (between 0 and 1)               | `0.8`                          | Zoom factor applied per scroll step                                   |
+| `time_per_iteration` | `number`                                 | `0.2`                          | Seconds per extra iteration when `iteration` is `'time_incremental'`  |
+| `color_mode`         | `'blue' \| 'better_blue' \| 'green'`     | `'better_blue'`                | Color palette used to render the set                                  |
 
 ## Project structure
 
@@ -78,6 +81,15 @@ src/
 - [ ] Better gradients / custom color picker
 - [ ] Improved `auto` iteration mode
 - [ ] Bug fixes / stability pass
+- [ ] Live demo
+
+## Gifs
+
+
+![demo 3](docs/media/demo-3.gif)  
+![demo 1](docs/media/demo-1.gif)  
+![demo 2](docs/media/demo-2.gif) 
+
 
 ## References
 
@@ -88,3 +100,4 @@ src/
 ## License
 
 Distributed under the [MIT License](LICENSE).
+
